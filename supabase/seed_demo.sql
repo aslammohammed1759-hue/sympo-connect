@@ -1,0 +1,7 @@
+-- OPTIONAL. Fictional DEMO events so the site isn't empty. All flagged is_demo = true.
+-- The UI labels them "DEMO DATA" and never shows a verified badge on them.
+-- Remove later with:  delete from events where is_demo;
+insert into events (title, college_name, district, state, description, category_id, event_date, registration_deadline, fee, mode, venue, contact, registration_url, is_demo, status) values
+('[DEMO] Sample Hackathon','DEMO College of Example','Sampleville','Tamil Nadu','Fictional demonstration event used to preview the layout. It is not a real event and the link goes nowhere.',(select id from event_categories where name='Hackathon'),current_date+21,current_date+14,0,'offline','Demo Hall','demo@example.com','https://example.com/demo-not-real',true,'approved'),
+('[DEMO] Sample Paper Presentation','DEMO Institute of Example','Sampleville','Karnataka','Fictional demonstration event used to preview the layout. It is not a real event and the link goes nowhere.',(select id from event_categories where name='Paper Presentation'),current_date+30,current_date+20,100,'hybrid','Demo Auditorium','demo@example.com','https://example.com/demo-not-real',true,'approved'),
+('[DEMO] Sample Workshop','DEMO University of Example','Sampleville','Kerala','Fictional demonstration event used to preview the layout. It is not a real event and the link goes nowhere.',(select id from event_categories where name='Workshop'),current_date+12,current_date+8,250,'online',null,'demo@example.com','https://example.com/demo-not-real',true,'approved');
