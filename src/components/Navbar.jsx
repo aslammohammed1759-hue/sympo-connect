@@ -20,12 +20,14 @@ export default function Navbar() {
   return (
     <header className="nav">
       <Link to="/" className="brand"><span className="logo">✦</span>Sympo<b>Connect</b></Link>
-      <button className="burger" onClick={() => setOpen(!open)} aria-label="Menu">☰</button>
+      <button className="burger" onClick={() => setOpen(!open)} aria-label="Menu" aria-expanded={open}>☰</button>
       <nav className={open ? 'open' : ''}>
         <NavLink to="/events">Discover</NavLink>
+        <NavLink to="/p/about">About</NavLink>
+        <NavLink to="/p/contact">Contact</NavLink>
         <NavLink to="/submit">Post an event</NavLink>
         {user && <NavLink to="/dashboard">Dashboard</NavLink>}
-        {user && <Link to="/dashboard?tab=notifications">🔔{unread > 0 && <span className="count">{unread}</span>}</Link>}
+        {user && <Link to="/dashboard?tab=notifications" aria-label={unread ? `${unread} unread notifications` : 'Notifications'}>🔔{unread > 0 && <span className="count">{unread}</span>}</Link>}
         {['staff', 'admin'].includes(profile?.role) && <NavLink to="/staff">Staff</NavLink>}
         {profile?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
         {user ? <button className="btn ghost" onClick={logout}>Log out</button> : <Link className="btn primary" to="/auth">Log in</Link>}
