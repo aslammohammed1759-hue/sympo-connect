@@ -53,7 +53,7 @@ export default function EventDetail() {
         <div>{poster ? <img className="big-poster" src={poster} alt={`${e.title} poster`} /> : <div className="poster big"><span className="poster-icon">{e.event_categories?.icon || '🎓'}</span></div>}</div>
         <div>
           <span className="chip">{e.event_categories?.name}</span>
-          {verified ? <span className="badge ok inline">✓ Staff verified</span> : e.is_demo ? <span className="badge demo inline">DEMO DATA</span> : null}
+          {verified ? <span className="badge ok inline">✓ Staff verified</span> : e.is_demo ? <span className="badge demo inline">DEMO DATA</span> : null}{e.trusted_college_domain && !e.is_demo && <span className="badge inline">Verified college email</span>}
           <h1>{e.title}</h1>
           <p className="lead">{e.college_name}</p>
           <ul className="facts">
