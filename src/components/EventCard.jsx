@@ -11,6 +11,7 @@ export default function EventCard({ e, showStatus }) {
         {!poster && <span className="poster-icon">{e.event_categories?.icon || '🎓'}</span>}
         {e.is_demo && <span className="badge demo">DEMO DATA</span>}
         {verified && !showStatus && <span className="badge ok">✓ Staff verified</span>}
+        {e.trusted_college_domain && !e.is_demo && <span className="badge inline">Verified college email</span>}
         {showStatus && <span className={`badge st-${e.status}`}>{STATUS_LABEL[e.status]}</span>}
       </div>
       <div className="body">
