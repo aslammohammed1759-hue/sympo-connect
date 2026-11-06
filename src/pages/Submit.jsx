@@ -19,6 +19,14 @@ export default function Submit() {
   const [existing, setExisting] = useState(null)
   const [errs, setErrs] = useState([])
   const [busy, setBusy] = useState(false)
+  const [verifyMsg, setVerifyMsg] = useState('')
+  const emailVerified = Boolean(user?.email_confirmed_at || user?.confirmed_at)
+
+  const resendVerification = async () => {
+    setVerifyMsg('')
+    const { error } = await supabase.auth.resend({ type: 'signup', email: user.email })
+    setVerifyMsg(error ? error.message : 'Verification email sent. Check your inbox and spam folder.')
+  }
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
 
   useEffect(() => {
@@ -85,7 +93,9 @@ export default function Submit() {
   return (
     <div className="container narrow">
       <h1>{existing ? 'Edit & resubmit event' : 'Post an event'}</h1>
-      <p className="muted">Submissions are reviewed by staff before they appear publicly.</p>
+      <p className="muted">Submissions are reviewed by staff before they appear publicly. A verified email is required to submit.</p>
+      {!emailVerified && <div className="alert"><p>Please verify {user?.email || 'your email address'} before submitting an event.</p><button type="button" className="btn ghost" onClick={resendVerification}>Resend verification email</button>{verifyMsg && <p>{verifyMsg}</p>}</div>}
+      {emailVerified && <p className="notice">✓ Your email address is verified. Event submissions still require staff approval before publication.</p>}
       {errs.length > 0 && <div className="alert"><ul>{errs.map((x) => <li key={x}>{x}</li>)}</ul></div>}
       <form className="card form" onSubmit={submit}>
         <label>Event title<input value={f.title} maxLength={150} onChange={set('title')} /></label>
@@ -103,7 +113,7 @@ export default function Submit() {
         <label>Official registration URL<input value={f.registration_url} onChange={set('registration_url')} placeholder="https://…" /></label>
         <label>Promotional video URL (optional)<input value={f.video_url} onChange={set('video_url')} placeholder="https://…" /></label>
         <label>Event poster (JPG/PNG/WebP, max 2 MB){existing && ' - leave empty to keep the current poster'}<input type="file" accept={TYPES.join(',')} onChange={(e) => setFile(e.target.files[0] || null)} /></label>
-        <button className="btn primary wide" disabled={busy}>{busy ? 'Submitting…' : existing ? 'Resubmit for review' : 'Submit for review'}</button>
+        <button className="btn primary wide" disabled={busy || !emailVerified}>{busy ? 'Submitting…' : existing ? 'Resubmit for review' : 'Submit for review'}</button>
       </form>
     </div>
   )
