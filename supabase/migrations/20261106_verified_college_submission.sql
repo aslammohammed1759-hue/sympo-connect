@@ -50,7 +50,15 @@ declare
   v_domain text;
   v_confirmed_at timestamptz;
 begin
-  if auth.uid() is null or new.submitted_by is distinct from auth.uid() then
+  -- Privileged SQL-editor inserts (for seed/demo data) are not user submissions.
+  if auth.uid() is null then
+    new.submitter_email_verified := false;
+    new.submitter_email_domain := null;
+    new.trusted_college_domain := false;
+    return new;
+  end if;
+
+  if new.submitted_by is distinct from auth.uid() then
     raise exception 'You must submit an event while signed in.';
   end if;
 
@@ -86,3 +94,23 @@ create trigger events_stamp_submitter_verification
 
 comment on column public.events.trusted_college_domain is
   'True only when the verified submitter email domain matches an active admin-managed allowlist entry. This is not staff event approval.';
+
+
+-- Prevent an event owner from changing the server-stamped verification fields later.
+create or replace function public.lock_submitter_verification_fields()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.submitter_email_verified := old.submitter_email_verified;
+  new.submitter_email_domain := old.submitter_email_domain;
+  new.trusted_college_domain := old.trusted_college_domain;
+  return new;
+end;
+$$;
+
+drop trigger if exists events_lock_submitter_verification on public.events;
+create trigger events_lock_submitter_verification
+  before update on public.events
+  for each row execute function public.lock_submitter_verification_fields();
