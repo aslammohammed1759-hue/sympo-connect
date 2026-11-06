@@ -67,6 +67,21 @@ select cron.schedule('sympo-reminders', '0 3 * * *', $$select public.send_event_
 ```
 Until you do this, reminders are simply not generated (nothing fake is shown). Email/push notifications are not included; they would need an Edge Function plus an email provider.
 
+
+## 7A. Verified college email submissions (feature branch)
+This feature is implemented on `feature/verified-event-submission`. It adds a database migration at `supabase/migrations/20261106_verified_college_submission.sql`.
+
+1. First run the original `supabase/schema.sql` on a fresh Supabase project as described above.
+2. Then open **SQL Editor → New query**, paste the complete migration file, and run it once.
+3. In **Table Editor → trusted_college_domains**, add only exact college email domains that your team has independently checked. Example format: domain = `examplecollege.ac.in`, college_name = `Example College`, is_active = `true`. These are examples only; do not add a domain unless you have verified it belongs to that institution.
+4. Keep **Authentication → Providers → Email → Confirm email** enabled.
+5. A submitter must have a confirmed email address. The database checks this on event insertion; the browser cannot mark an email as verified.
+6. Events submitted from an active allowlisted domain receive a **Verified college email** indicator. Events from other verified email domains can still be submitted, but do not receive that indicator.
+7. **Every event remains pending until staff reviews and approves it.** A trusted email domain is not proof that an event is genuine and does not automatically publish or staff-verify the event.
+
+To deactivate a domain, set `is_active = false` in the table. To remove it entirely, delete its row. Manage this table only as an administrator.
+
+
 ## 9. Deploy the frontend (Netlify or Vercel)
 1. Push the project to GitHub.
 2. Netlify: **Add new site → Import from Git**, build command `npm run build`, publish directory `dist`. Vercel: import the repo (Vite is auto-detected).
