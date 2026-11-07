@@ -1,0 +1,10 @@
+# The app lives in a subdirectory, so point Netlify at it.
+[build]
+  base = "SympoConnect_Complete_Project"
+  command = "npm ci --include=dev && npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
