@@ -7,6 +7,7 @@ A responsive college symposium event portal built with React, Vite, and Supabase
 - Search and category filters
 - Registration modal and client-side validation
 - Supabase event loading and registration inserts
+- Event assistant UI backed by a server-side Netlify function
 - Demo mode when Supabase environment variables are not configured
 - Supabase schema with Row Level Security policies
 - Netlify SPA redirect and build configuration
@@ -43,7 +44,7 @@ Copy-Item .env.example .env.local
 The public browser key is not a secret. Security depends on RLS. Never put a `service_role` key or secret key in frontend code or any `VITE_` variable.
 
 ## 4. Deploy to Netlify
-1. Push this folder to a GitHub repository, or import the project into Netlify.
+1. Push this repository to GitHub, or import the repository into Netlify. The root `netlify.toml` sets `SympoConnect_Complete_Project` as the Netlify base directory.
 2. Build command: `npm run build`
 3. Publish directory: `dist`
 4. In Netlify: Project configuration → Environment variables, add:
@@ -52,7 +53,14 @@ The public browser key is not a secret. Security depends on RLS. Never put a `se
 5. Ensure variables apply to production builds.
 6. Trigger a new deploy.
 
-`netlify.toml` includes the SPA fallback. If the site itself returns `401` before the app appears, inspect Netlify Visitor access / Project visibility. A frontend code change cannot override platform-level access protection.
+To enable the AI event guide, add these server-side Netlify environment variables:
+- `AI_API_URL` = full HTTPS URL for an OpenAI-compatible chat-completions endpoint
+- `AI_API_KEY` = provider API key (server-side only; never use a `VITE_` prefix)
+- `AI_MODEL` = model identifier accepted by that endpoint
+
+The function applies request-size, question-length, timeout, and best-effort per-instance rate limits. Configure provider-side quotas before enabling it publicly. For local function testing, use Netlify CLI (`netlify dev`) so `/.netlify/functions/assistant` is available; `vite dev` alone does not run Netlify functions.
+
+The repository-root `netlify.toml` configures the app base directory, functions, build, and SPA fallback. The app-folder `netlify.toml` supports deployments where `SympoConnect_Complete_Project` itself is selected as the Netlify base. If the site itself returns `401` before the app appears, inspect Netlify Visitor access / Project visibility. A frontend code change cannot override platform-level access protection.
 
 ## 5. Supabase Auth note
 This starter uses registration inserts, not Supabase Auth login. If you later add authentication, configure the Auth Site URL and allowed redirect URLs for the production domain.
@@ -73,6 +81,9 @@ SympoConnect_Complete_Project/
 ├── netlify.toml
 ├── .env.example
 ├── README.md
+├── netlify/
+│   └── functions/
+│       └── assistant.mjs
 ├── src/
 │   ├── main.jsx
 │   ├── App.jsx

@@ -19,6 +19,9 @@ create table if not exists public.events (
   created_at timestamptz not null default now()
 );
 
+alter table public.events
+  add column if not exists category text not null default 'Technical';
+
 create table if not exists public.registrations (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.events(id) on delete cascade,
