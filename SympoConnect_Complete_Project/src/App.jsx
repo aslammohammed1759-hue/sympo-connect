@@ -1,56 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ArrowRight, CalendarDays, CheckCircle2, Code2, Cpu, Menu, Search,
   Sparkles, Users, X, Camera, Puzzle, Mic2, Globe2, BrainCircuit
 } from 'lucide-react'
-import { isSupabaseConfigured, supabase } from './supabase.js'
+import { events as eventList } from './events.js'
 
-const demoEvents = [
-  { id: 'paper', title: 'Paper Presentation', category: 'Technical', description: 'Present your research, ideas, and innovations to a panel of reviewers.', event_time: '10:00 AM', venue: 'Seminar Hall', team_size: 'Individual / Team', fee: 0 },
-  { id: 'code', title: 'Code Busters', category: 'Technical', description: 'Solve programming challenges with logic, speed, and clean code.', event_time: '11:00 AM', venue: 'Computer Lab', team_size: 'Individual / Team', fee: 0 },
-  { id: 'web', title: 'Web Craft', category: 'Technical', description: 'Turn a creative prompt into a polished web experience.', event_time: '12:00 PM', venue: 'Computer Lab', team_size: 'Individual / Team', fee: 0 },
-  { id: 'mime', title: 'MIME MANIA', category: 'Non-Technical', description: 'Tell a story through expression, movement, and imagination.', event_time: '01:00 PM', venue: 'Main Auditorium', team_size: 'Team', fee: 0 },
-  { id: 'clue', title: 'Clue Quest', category: 'Non-Technical', description: 'Follow clues, solve puzzles, and race toward the final answer.', event_time: '02:00 PM', venue: 'Campus', team_size: 'Team', fee: 0 },
-  { id: 'snap', title: 'Snap Sense', category: 'Creative', description: 'Capture a compelling moment around a surprise theme.', event_time: '02:30 PM', venue: 'Campus', team_size: 'Individual', fee: 0 },
-  { id: 'connect', title: 'CONNECT CRAZE', category: 'Fun', description: 'Meet your team, think fast, and take on interactive rounds.', event_time: '03:00 PM', venue: 'Activity Hall', team_size: 'Team', fee: 0 },
-  { id: 'ai', title: 'Human vs AI', category: 'AI & DS', description: 'Compare human reasoning with AI-powered answers in a fun challenge.', event_time: '03:30 PM', venue: 'Seminar Hall', team_size: 'Individual / Team', fee: 0 },
-]
 const categories = ['All Events', 'Technical', 'Non-Technical', 'Creative', 'AI & DS', 'Fun']
 const icons = { Technical: Code2, 'Non-Technical': Puzzle, Creative: Camera, 'AI & DS': BrainCircuit, Fun: Sparkles }
 
 function App() {
-  const [events, setEvents] = useState(demoEvents)
+  const events = eventList
   const [category, setCategory] = useState('All Events')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [form, setForm] = useState({ participant_name: '', email: '', phone: '', college: '' })
   const [submitState, setSubmitState] = useState({ loading: false, message: '', error: false })
-  const [dbStatus, setDbStatus] = useState(isSupabaseConfigured ? 'Connecting to Supabase…' : 'Preview mode')
-
-  useEffect(() => {
-    let active = true
-    async function loadEvents() {
-      if (!isSupabaseConfigured) {
-        setDbStatus('Preview mode · add Supabase variables to connect')
-        return
-      }
-      const { data, error } = await supabase.from('events')
-        .select('id,title,category,description,event_date,event_time,venue,team_size,fee')
-        .eq('status', 'published')
-        .order('created_at', { ascending: true })
-      if (!active) return
-      if (error) {
-        setDbStatus('Supabase needs attention')
-        console.error('Supabase event load error:', error.message)
-        return
-      }
-      setEvents(data?.length ? data : demoEvents)
-      setDbStatus('Connected to Supabase')
-    }
-    loadEvents()
-    return () => { active = false }
-  }, [])
 
   const filteredEvents = useMemo(() => events.filter(event => {
     const matchesCategory = category === 'All Events' || event.category === category
@@ -70,26 +35,17 @@ function App() {
     e.preventDefault()
     if (!selected) return
     setSubmitState({ loading: true, message: '', error: false })
-    if (!isSupabaseConfigured || String(selected.id).length < 20) {
-      setSubmitState({
-        loading: false,
-        message: 'Preview only: connect Supabase and load the SQL schema before accepting real registrations.',
-        error: true
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: selected.id, ...form })
       })
-      return
-    }
-    const { error } = await supabase.from('registrations').insert({
-      event_id: selected.id,
-      participant_name: form.participant_name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim() || null,
-      college: form.college.trim() || null
-    })
-    if (error) {
-      console.error('Registration error:', error.message)
-      setSubmitState({ loading: false, message: error.message, error: true })
-    } else {
-      setSubmitState({ loading: false, message: 'Registration submitted successfully!', error: false })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not submit your registration. Please try again.')
+      setSubmitState({ loading: false, message: `You're registered for ${selected.title}!`, error: false })
+    } catch (err) {
+      setSubmitState({ loading: false, message: err.message, error: true })
     }
   }
 
@@ -186,7 +142,7 @@ function App() {
 
       <footer id="footer">
         <div className="footer-main"><a className="brand" href="#home"><span className="brand-mark"><Sparkles size={21}/></span><span>Sympo<span className="brand-accent">Connect</span></span></a><p>Ideas meet. Possibilities happen.</p><a href="#events" className="footer-link">Find your event <ArrowRight size={16}/></a></div>
-        <div className="footer-bottom"><span>© {new Date().getFullYear()} SympoConnect. Built for campus connections.</span><span className="connection-status"><span className={dbStatus === 'Connected to Supabase' ? 'status-dot good' : 'status-dot'}></span>{dbStatus}</span></div>
+        <div className="footer-bottom"><span>© {new Date().getFullYear()} SympoConnect. Built for campus connections.</span><span className="connection-status"><span className="status-dot good"></span>Registrations open</span></div>
       </footer>
 
       {selected && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setSelected(null) }}>
@@ -200,7 +156,7 @@ function App() {
               <label>Phone number <span>(optional)</span><input type="tel" maxLength="25" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="Your contact number"/></label>
               <label>College <span>(optional)</span><input maxLength="150" value={form.college} onChange={e => setForm({...form, college: e.target.value})} placeholder="College name"/></label>
               <button className="primary-button form-submit" disabled={submitState.loading}>{submitState.loading ? 'Submitting…' : 'Submit registration'} <ArrowRight size={17}/></button>
-              <small>Your information is submitted to the event database when Supabase is configured.</small>
+              <small>Your details are saved securely and shared only with the event organisers.</small>
             </form>}
         </section>
       </div>}
