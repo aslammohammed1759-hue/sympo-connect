@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { isConfigured, supabase } from '../supabaseClient'
+import { getInternalReturnPath } from '../lib/navigation'
 
 function authErrorMessage(error) {
   const message = error?.message || ''
@@ -18,7 +19,8 @@ export default function Auth() {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const nav = useNavigate()
-  const from = useLocation().state?.from || '/dashboard'
+  const location = useLocation()
+  const from = getInternalReturnPath(location.state?.from)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
 
   const submit = async (e) => {

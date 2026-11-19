@@ -6,10 +6,14 @@ import { STATUS_LABEL } from '../lib/constants'
 import EventCard from '../components/EventCard'
 import StatePanel from '../components/StatePanel'
 
+const TABS = [['saved', 'Saved'], ['submissions', 'My submissions'], ['notifications', 'Notifications'], ['profile', 'Profile']]
+const TAB_KEYS = TABS.map(([key]) => key)
+
 export default function Dashboard() {
   const { user, profile, refreshProfile } = useAuth()
   const [sp, setSp] = useSearchParams()
-  const tab = sp.get('tab') || 'saved'
+  const requestedTab = sp.get('tab')
+  const tab = TAB_KEYS.includes(requestedTab) ? requestedTab : 'saved'
   const [saved, setSaved] = useState([])
   const [mine, setMine] = useState([])
   const [notes, setNotes] = useState([])
@@ -50,12 +54,14 @@ export default function Dashboard() {
     const { error } = await supabase.from('profiles').update({ staff_requested: true }).eq('id', user.id)
     setMsg(error ? error.message : 'Request sent. An administrator will review it.'); refreshProfile()
   }
-  const tabs = [['saved', 'Saved'], ['submissions', 'My submissions'], ['notifications', 'Notifications'], ['profile', 'Profile']]
+  useEffect(() => {
+    if (requestedTab && !TAB_KEYS.includes(requestedTab)) setSp({ tab: 'saved' }, { replace: true })
+  }, [requestedTab, setSp])
 
   return (
     <div className="container">
       <h1>Hi{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} 👋</h1>
-      <div className="tabs" role="group" aria-label="Dashboard sections">{tabs.map(([k, l]) => <button type="button" key={k} className={tab === k ? 'on' : ''} aria-pressed={tab === k} onClick={() => setSp({ tab: k })}>{l}</button>)}</div>
+      <div className="tabs" role="group" aria-label="Dashboard sections">{TABS.map(([k, l]) => <button type="button" key={k} className={tab === k ? 'on' : ''} aria-pressed={tab === k} onClick={() => setSp({ tab: k })}>{l}</button>)}</div>
 
       {loading
         ? <StatePanel variant="loading" title="Loading your dashboard" />
@@ -81,10 +87,13 @@ export default function Dashboard() {
       {tab === 'notifications' && (<>
         <button className="btn ghost" onClick={markAll}>Mark all as read</button>
         {notes.length === 0 ? <StatePanel title="You’re all caught up" message="New updates about your events will appear here." /> :
-          <div className="list">{notes.map((n) => (
-            <Link key={n.id} to={n.event_id ? `/events/${n.event_id}` : '#'} className={`card note ${n.is_read ? '' : 'unread'}`}>
-              <b>{n.title}</b><p>{n.body}</p><small className="muted">{new Date(n.created_at).toLocaleString()}</small>
-            </Link>))}</div>}
+          <div className="list">{notes.map((n) => {
+            const content = <><b>{n.title}</b><p>{n.body}</p><small className="muted">{new Date(n.created_at).toLocaleString()}</small></>
+            const className = `card note ${n.is_read ? '' : 'unread'}`
+            return n.event_id
+              ? <Link key={n.id} to={`/events/${n.event_id}`} className={className}>{content}</Link>
+              : <div key={n.id} className={className}>{content}</div>
+          })}</div>}
       </>)}
 
       {tab === 'profile' && form && (

@@ -6,6 +6,14 @@ import Filters from '../components/Filters'
 import EventCard from '../components/EventCard'
 import StatePanel from '../components/StatePanel'
 
+const MAX_PAGE = Math.floor(Number.MAX_SAFE_INTEGER / PAGE_SIZE)
+
+function isValidDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000-')) return false
+  const date = new Date(`${value}T00:00:00.000Z`)
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
+
 export default function Events() {
   const [sp, setSp] = useSearchParams()
   const [items, setItems] = useState([])
@@ -13,9 +21,50 @@ export default function Events() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [refresh, setRefresh] = useState(0)
-  const page = Number(sp.get('page') || 1)
-  const sort = sp.get('sort') || 'date'
+  const pageParam = sp.get('page')
+  const parsedPage = Number(pageParam)
+  const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 && parsedPage <= MAX_PAGE ? parsedPage : 1
+  const sortParam = sp.get('sort')
+  const sort = ['date', 'newest', 'fee'].includes(sortParam) ? sortParam : 'date'
   const filters = Object.fromEntries(FILTER_KEYS.filter((k) => sp.get(k)).map((k) => [k, sp.get(k)]))
+  if (filters.category && (!/^[1-9]\d*$/.test(filters.category) || !Number.isSafeInteger(Number(filters.category)))) delete filters.category
+  if (filters.date && !isValidDate(filters.date)) delete filters.date
+  if (filters.mode && !['online', 'offline', 'hybrid'].includes(filters.mode)) delete filters.mode
+  if (filters.fee && !['free', 'paid'].includes(filters.fee)) delete filters.fee
+
+  useEffect(() => {
+    const next = new URLSearchParams(sp)
+    let changed = false
+    if (pageParam !== null && (!/^[1-9]\d*$/.test(pageParam) || !Number.isSafeInteger(parsedPage) || parsedPage > MAX_PAGE)) {
+      next.delete('page')
+      changed = true
+    }
+    if (sortParam !== null && !['date', 'newest', 'fee'].includes(sortParam)) {
+      next.delete('sort')
+      changed = true
+    }
+    const category = next.get('category')
+    if (category !== null && (!/^[1-9]\d*$/.test(category) || !Number.isSafeInteger(Number(category)))) {
+      next.delete('category')
+      changed = true
+    }
+    const date = next.get('date')
+    if (date !== null && !isValidDate(date)) {
+      next.delete('date')
+      changed = true
+    }
+    const mode = next.get('mode')
+    if (mode !== null && !['online', 'offline', 'hybrid'].includes(mode)) {
+      next.delete('mode')
+      changed = true
+    }
+    const fee = next.get('fee')
+    if (fee !== null && !['free', 'paid'].includes(fee)) {
+      next.delete('fee')
+      changed = true
+    }
+    if (changed) setSp(next, { replace: true })
+  }, [pageParam, parsedPage, setSp, sortParam, sp])
 
   useEffect(() => {
     let on = true

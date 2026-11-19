@@ -9,8 +9,12 @@ export default function Navbar() {
   const [unread, setUnread] = useState(0)
   const loc = useLocation()
   const nav = useNavigate()
+  const currentPath = loc.pathname.replace(/\/+$/, '') || '/'
+  const dashboardTab = new URLSearchParams(loc.search).get('tab')
+  const dashboardActive = currentPath === '/dashboard' && dashboardTab !== 'notifications'
+  const notificationsActive = currentPath === '/dashboard' && dashboardTab === 'notifications'
 
-  useEffect(() => { setOpen(false) }, [loc.pathname])
+  useEffect(() => { setOpen(false) }, [loc.pathname, loc.search])
   useEffect(() => {
     if (!user) return setUnread(0)
     supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_read', false).then((r) => setUnread(r.count || 0))
@@ -31,8 +35,17 @@ export default function Navbar() {
       <nav id="primary-navigation" className={open ? 'open' : ''} aria-label="Main navigation">
         <NavLink to="/events">Discover</NavLink>
         <NavLink to="/submit">Post an event</NavLink>
-        {user && <NavLink to="/dashboard">Dashboard</NavLink>}
-        {user && <Link to="/dashboard?tab=notifications" aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ''}`}>🔔{unread > 0 && <span className="count">{unread}</span>}</Link>}
+        {user && <Link
+          to="/dashboard"
+          className={dashboardActive ? 'active' : undefined}
+          aria-current={dashboardActive ? 'page' : undefined}
+        >Dashboard</Link>}
+        {user && <Link
+          to="/dashboard?tab=notifications"
+          className={notificationsActive ? 'active' : undefined}
+          aria-current={notificationsActive ? 'page' : undefined}
+          aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ''}`}
+        >🔔{unread > 0 && <span className="count">{unread}</span>}</Link>}
         {['staff', 'admin'].includes(profile?.role) && <NavLink to="/staff">Staff</NavLink>}
         {profile?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
         {user ? <button className="btn ghost" onClick={logout}>Log out</button> : <Link className="btn primary" to="/auth">Log in</Link>}
