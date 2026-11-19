@@ -4,31 +4,62 @@ import { supabase } from '../supabaseClient'
 import { today } from '../lib/constants'
 import Filters from '../components/Filters'
 import EventCard from '../components/EventCard'
+import StatePanel from '../components/StatePanel'
 
-function Row({ title, items, empty }) {
+function Row({ title, state, empty, onRetry }) {
+  const { items, loading, error } = state
   return (
     <section className="section">
       <h2>{title}</h2>
-      {items === null ? <p className="muted">Loading…</p> : items.length === 0 ? <p className="empty">{empty}</p> :
-        <div className="grid">{items.map((e) => <EventCard key={e.id} e={e} />)}</div>}
+      {loading
+        ? <StatePanel variant="loading" title="Finding events" message="This should only take a moment." />
+        : error
+          ? <StatePanel variant="error" title="Events couldn’t load" message="Check your connection and try again." actionLabel="Retry" onAction={onRetry} />
+          : items.length === 0
+            ? <StatePanel title="Nothing to show yet" message={empty} />
+            : <div className="grid">{items.map((e) => <EventCard key={e.id} e={e} />)}</div>}
     </section>
   )
 }
 
 export default function Home() {
   const nav = useNavigate()
-  const [cats, setCats] = useState([])
-  const [featured, setFeatured] = useState(null)
-  const [upcoming, setUpcoming] = useState(null)
-  const [recent, setRecent] = useState(null)
+  const [cats, setCats] = useState({ items: [], loading: true, error: false })
+  const [featured, setFeatured] = useState({ items: [], loading: true, error: false })
+  const [upcoming, setUpcoming] = useState({ items: [], loading: true, error: false })
+  const [recent, setRecent] = useState({ items: [], loading: true, error: false })
+  const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
+    let active = true
+    const loading = { items: [], loading: true, error: false }
+    setCats(loading)
+    setFeatured(loading)
+    setUpcoming(loading)
+    setRecent(loading)
     const base = () => supabase.from('events').select('*, event_categories(name,icon)').eq('status', 'approved')
-    supabase.from('event_categories').select('*').order('name').then((r) => setCats(r.data || []))
-    base().eq('is_featured', true).gte('event_date', today()).order('event_date').limit(3).then((r) => setFeatured(r.data || []))
-    base().gte('event_date', today()).order('event_date').limit(6).then((r) => setUpcoming(r.data || []))
-    base().order('created_at', { ascending: false }).limit(6).then((r) => setRecent(r.data || []))
-  }, [])
+    Promise.all([
+      supabase.from('event_categories').select('*').order('name'),
+      base().eq('is_featured', true).gte('event_date', today()).order('event_date').limit(3),
+      base().gte('event_date', today()).order('event_date').limit(6),
+      base().order('created_at', { ascending: false }).limit(6),
+    ]).then(([categoryResult, featuredResult, upcomingResult, recentResult]) => {
+      if (!active) return
+      setCats({ items: categoryResult.data || [], loading: false, error: Boolean(categoryResult.error) })
+      setFeatured({ items: featuredResult.data || [], loading: false, error: Boolean(featuredResult.error) })
+      setUpcoming({ items: upcomingResult.data || [], loading: false, error: Boolean(upcomingResult.error) })
+      setRecent({ items: recentResult.data || [], loading: false, error: Boolean(recentResult.error) })
+    }).catch(() => {
+      if (!active) return
+      setCats({ items: [], loading: false, error: true })
+      setFeatured({ items: [], loading: false, error: true })
+      setUpcoming({ items: [], loading: false, error: true })
+      setRecent({ items: [], loading: false, error: true })
+    })
+    return () => { active = false }
+  }, [refresh])
+
+  const retry = () => setRefresh((value) => value + 1)
 
   return (
     <>
@@ -40,11 +71,17 @@ export default function Home() {
       <div className="container">
         <section className="section">
           <h2>Browse by category</h2>
-          <div className="cats">{cats.map((c) => <Link key={c.id} to={`/events?category=${c.id}`} className="cat"><span>{c.icon}</span>{c.name}</Link>)}</div>
+          {cats.loading
+            ? <StatePanel variant="loading" title="Loading categories" />
+            : cats.error
+              ? <StatePanel variant="error" title="Categories couldn’t load" message="Try again to browse event types." actionLabel="Retry" onAction={retry} />
+              : cats.items.length === 0
+                ? <StatePanel title="No categories available" message="Event categories will appear here when available." />
+                : <div className="cats">{cats.items.map((c) => <Link key={c.id} to={`/events?category=${c.id}`} className="cat"><span aria-hidden="true">{c.icon}</span>{c.name}</Link>)}</div>}
         </section>
-        {featured && featured.length > 0 && <Row title="⭐ Featured events" items={featured} />}
-        <Row title="Upcoming events" items={upcoming} empty="No upcoming approved events yet. Organizers can post one; staff will review it before it appears." />
-        <Row title="Recently added" items={recent} empty="Nothing here yet." />
+        {(featured.loading || featured.error || featured.items.length > 0) && <Row title="Featured events" state={featured} onRetry={retry} />}
+        <Row title="Upcoming events" state={upcoming} onRetry={retry} empty="No upcoming approved events yet. Organizers can post one; staff will review it before it appears." />
+        <Row title="Recently added" state={recent} onRetry={retry} empty="New event listings will appear here." />
       </div>
     </>
   )

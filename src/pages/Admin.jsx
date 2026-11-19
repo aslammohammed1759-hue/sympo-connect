@@ -3,29 +3,43 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../AuthContext'
 import { REPORT_REASONS, STATUS_LABEL } from '../lib/constants'
+import StatePanel from '../components/StatePanel'
 
-const count = (table, f) => { let q = supabase.from(table).select('*', { count: 'exact', head: true }); if (f) q = f(q); return q.then((r) => r.count ?? 0) }
+const count = (table, f) => { let q = supabase.from(table).select('*', { count: 'exact', head: true }); if (f) q = f(q); return q.then((r) => { if (r.error) throw r.error; return r.count ?? 0 }) }
 
 export default function Admin() {
   const { user } = useAuth()
   const [tab, setTab] = useState('overview')
   const [data, setData] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const [msg, setMsg] = useState('')
   const [domainForm, setDomainForm] = useState({ domain: '', college_name: '' })
 
   const load = async () => {
     setData(null)
-    if (tab === 'overview') {
-      const [users, events, pending, approved, rejected, reports] = await Promise.all([
-        count('profiles'), count('events'), count('events', (q) => q.eq('status', 'pending')), count('events', (q) => q.eq('status', 'approved')),
-        count('events', (q) => q.eq('status', 'rejected')), count('event_reports', (q) => q.eq('status', 'open'))])
-      setData({ users, events, pending, approved, rejected, reports })
-    } else if (tab === 'users') setData((await supabase.from('profiles').select('*').order('staff_requested', { ascending: false }).order('created_at', { ascending: false }).limit(200)).data || [])
-    else if (tab === 'events') setData((await supabase.from('events').select('id,title,college_name,status,is_demo,is_featured,created_at').order('created_at', { ascending: false }).limit(100)).data || [])
-    else if (tab === 'reports') setData((await supabase.from('event_reports').select('*, events(title,status), reporter:profiles!event_reports_reporter_id_fkey(full_name)').order('created_at', { ascending: false }).limit(100)).data || [])
-    else if (tab === 'duplicates') setData((await supabase.from('duplicate_events').select('*')).data || [])
-    else if (tab === 'audit') setData((await supabase.from('audit_logs').select('*, actor:profiles!audit_logs_actor_id_fkey(full_name)').order('created_at', { ascending: false }).limit(100)).data || [])
-    else if (tab === 'domains') setData((await supabase.from('trusted_college_domains').select('*').order('domain')).data || [])
+    setLoadError(false)
+    try {
+      if (tab === 'overview') {
+        const [users, events, pending, approved, rejected, reports] = await Promise.all([
+          count('profiles'), count('events'), count('events', (q) => q.eq('status', 'pending')), count('events', (q) => q.eq('status', 'approved')),
+          count('events', (q) => q.eq('status', 'rejected')), count('event_reports', (q) => q.eq('status', 'open'))])
+        setData({ users, events, pending, approved, rejected, reports })
+      } else {
+        const queries = {
+          users: () => supabase.from('profiles').select('*').order('staff_requested', { ascending: false }).order('created_at', { ascending: false }).limit(200),
+          events: () => supabase.from('events').select('id,title,college_name,status,is_demo,is_featured,created_at').order('created_at', { ascending: false }).limit(100),
+          reports: () => supabase.from('event_reports').select('*, events(title,status), reporter:profiles!event_reports_reporter_id_fkey(full_name)').order('created_at', { ascending: false }).limit(100),
+          duplicates: () => supabase.from('duplicate_events').select('*'),
+          audit: () => supabase.from('audit_logs').select('*, actor:profiles!audit_logs_actor_id_fkey(full_name)').order('created_at', { ascending: false }).limit(100),
+          domains: () => supabase.from('trusted_college_domains').select('*').order('domain'),
+        }
+        const result = await queries[tab]()
+        if (result.error) throw result.error
+        setData(result.data || [])
+      }
+    } catch {
+      setLoadError(true)
+    }
   }
   useEffect(() => { load() }, [tab])
 
@@ -48,18 +62,24 @@ export default function Admin() {
   return (
     <div className="container">
       <h1>Admin dashboard</h1>
-      <div className="tabs">{tabs.map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t === 'domains' ? 'Trusted domains' : t[0].toUpperCase() + t.slice(1)}</button>)}</div>
-      {msg && <p className="alert">{msg}</p>}
-      {data === null ? <p className="muted">Loading…</p> : <>
+      <div className="tabs" role="group" aria-label="Admin sections">{tabs.map((t) => <button type="button" key={t} className={tab === t ? 'on' : ''} aria-pressed={tab === t} onClick={() => setTab(t)}>{t === 'domains' ? 'Trusted domains' : t[0].toUpperCase() + t.slice(1)}</button>)}</div>
+      {msg && <p className="alert" role="status">{msg}</p>}
+      {loadError
+        ? <StatePanel variant="error" title="Admin data couldn’t load" message="No changes were made by this load attempt. Please retry." actionLabel="Retry" onAction={load} />
+        : data === null ? <StatePanel variant="loading" title="Loading admin workspace" /> : <>
         {tab === 'overview' && <div className="stats">{Object.entries({ 'Total users': data.users, 'Total events': data.events, 'Pending': data.pending, 'Approved': data.approved, 'Rejected': data.rejected, 'Open reports': data.reports }).map(([k, v]) => <div key={k} className="card stat"><b>{v}</b><span>{k}</span></div>)}</div>}
-        {tab === 'users' && <div className="list">{data.map((u) => (
+        {tab === 'users' && (data.length === 0
+          ? <StatePanel title="No users found" message="New accounts will appear here." />
+          : <div className="list">{data.map((u) => (
           <div key={u.id} className="card row-item"><div><b>{u.full_name || '(no name)'}</b> {u.is_suspended && <span className="badge inline st-rejected">Suspended</span>}{u.staff_requested && <span className="badge inline st-pending">Staff requested</span>}<p className="muted">{u.college_name} · {u.district}</p></div>
             <div className="row"><select value={u.role} disabled={u.id === user.id} onChange={(e) => run(supabase.rpc('admin_set_role', { p_user: u.id, p_role: e.target.value }))}><option value="student">student</option><option value="staff">staff</option><option value="admin">admin</option></select>
-              <button className="btn ghost danger" disabled={u.id === user.id} onClick={() => run(supabase.rpc('admin_set_suspended', { p_user: u.id, p_suspended: !u.is_suspended }))}>{u.is_suspended ? 'Unsuspend' : 'Suspend'}</button></div></div>))}</div>}
-        {tab === 'events' && <div className="list">{data.map((e) => (
+              <button className="btn ghost danger" disabled={u.id === user.id} onClick={() => run(supabase.rpc('admin_set_suspended', { p_user: u.id, p_suspended: !u.is_suspended }))}>{u.is_suspended ? 'Unsuspend' : 'Suspend'}</button></div></div>))}</div>)}
+        {tab === 'events' && (data.length === 0
+          ? <StatePanel title="No event listings found" message="Submitted events will appear here." />
+          : <div className="list">{data.map((e) => (
           <div key={e.id} className="card row-item"><div><Link to={`/events/${e.id}`}><b>{e.title}</b></Link> {e.is_demo && <span className="badge inline demo">DEMO</span>}<br /><span className={`badge inline st-${e.status}`}>{STATUS_LABEL[e.status]}</span><p className="muted">{e.college_name}</p></div>
             <div className="row">{e.status === 'approved' && <button className="btn ghost" onClick={() => run(supabase.rpc('admin_set_featured', { p_event: e.id, p_featured: !e.is_featured }))}>{e.is_featured ? '★ Unfeature' : '☆ Feature'}</button>}
-              {e.status !== 'removed' && <button className="btn ghost danger" onClick={() => remove(e.id)}>Remove</button>}</div></div>))}</div>}
+              {e.status !== 'removed' && <button className="btn ghost danger" onClick={() => remove(e.id)}>Remove</button>}</div></div>))}</div>)}
         {tab === 'domains' && <>
           <p className="muted">Allowlisting confirms account-domain provenance only. Every event still requires staff review.</p>
           <form className="card form" onSubmit={addDomain}>

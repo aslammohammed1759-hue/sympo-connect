@@ -50,7 +50,10 @@ export default function Auth() {
 
   return (
     <div className="auth card">
-      <div className="tabs"><button className={mode === 'login' ? 'on' : ''} onClick={() => setMode('login')}>Log in</button><button className={mode === 'signup' ? 'on' : ''} onClick={() => setMode('signup')}>Sign up</button></div>
+      <div className="tabs" role="group" aria-label="Account action">
+        <button type="button" className={mode === 'login' ? 'on' : ''} aria-pressed={mode === 'login'} onClick={() => setMode('login')}>Log in</button>
+        <button type="button" className={mode === 'signup' ? 'on' : ''} aria-pressed={mode === 'signup'} onClick={() => setMode('signup')}>Sign up</button>
+      </div>
       <form onSubmit={submit}>
         {mode === 'signup' && <>
           <label>Full name<input value={f.full_name} onChange={set('full_name')} maxLength={100} /></label>
@@ -59,8 +62,8 @@ export default function Auth() {
         </>}
         <label>Email<input type="email" required value={f.email} onChange={set('email')} /></label>
         <label>Password<input type="password" required minLength={8} value={f.password} onChange={set('password')} /></label>
-        {err && <p className="alert">{err}</p>}
-        {msg && <p className="notice">{msg}</p>}
+        {err && <p className="alert" role="alert">{err}</p>}
+        {msg && <p className="notice" role="status">{msg}</p>}
         <button className="btn primary wide" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}</button>
       </form>
     </div>

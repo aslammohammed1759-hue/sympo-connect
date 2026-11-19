@@ -7,8 +7,10 @@ export default function EventCard({ e, showStatus }) {
   const verified = e.status === 'approved' && !e.is_demo
   return (
     <Link to={`/events/${e.id}`} className="card event">
-      <div className="poster" style={poster ? { backgroundImage: `url(${poster})` } : undefined}>
-        {!poster && <span className="poster-icon">{e.event_categories?.icon || '🎓'}</span>}
+      <div className="poster">
+        {poster
+          ? <img className="poster-image" src={poster} alt={`${e.title} poster`} loading="lazy" />
+          : <span className="poster-icon" aria-hidden="true">{e.event_categories?.icon || '🎓'}</span>}
         {e.is_demo && <span className="badge demo">DEMO DATA</span>}
         {verified && !showStatus && <span className="badge ok">✓ Staff approved</span>}
         {showStatus && <span className={`badge st-${e.status}`}>{STATUS_LABEL[e.status]}</span>}

@@ -103,7 +103,7 @@ export default function Submit() {
       <p className="muted">A verified email confirms access to that inbox, not that an event is genuine. Verified college accounts receive a separate account label; every event remains pending until staff review.</p>
       {!emailVerified && <div className="alert">Please verify {user?.email || 'your email address'} before submitting an event. Check your inbox for the confirmation link.</div>}
       {emailVerified && <p className="notice">✓ Verified organizer email: <b>{user.email}</b>. This confirms access to the inbox only; event submissions still require staff review.</p>}
-      {errs.length > 0 && <div className="alert"><ul>{errs.map((x) => <li key={x}>{x}</li>)}</ul></div>}
+      {errs.length > 0 && <div className="alert" role="alert"><ul>{errs.map((x) => <li key={x}>{x}</li>)}</ul></div>}
       <form className="card form" onSubmit={submit}>
         <label>Event title<input required value={f.title} maxLength={150} onChange={set('title')} /></label>
         <label>Organizing college<input required value={f.college_name} maxLength={150} onChange={set('college_name')} /></label>
@@ -122,7 +122,7 @@ export default function Submit() {
         <label>YouTube or Google Drive promo URL (optional)<input type="url" value={f.video_url} onChange={set('video_url')} placeholder="https://youtube.com/… or https://drive.google.com/…" /></label>
         <label>Instagram post / Reel URL (optional)<input type="url" value={f.social_url} onChange={set('social_url')} placeholder="https://www.instagram.com/…" /></label>
         <label>Event poster (JPG/PNG/WebP, max 2 MB){existing && ' - leave empty to keep the current poster'}<input type="file" accept={TYPES.join(',')} onChange={(e) => setFile(e.target.files[0] || null)} /></label>
-        <button className="btn primary wide" disabled={busy || !emailVerified}>{busy ? 'Submitting…' : existing ? 'Save changes' : 'Submit event'}</button>
+        <button className="btn primary wide" disabled={busy || !emailVerified} aria-busy={busy}>{busy ? 'Submitting…' : existing ? 'Save changes' : 'Submit event'}</button>
       </form>
     </div>
   )

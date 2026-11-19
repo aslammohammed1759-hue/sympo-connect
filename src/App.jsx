@@ -17,8 +17,9 @@ import Static from './pages/Static'
 export default function App() {
   return (
     <>
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <Navbar />
-      <main>
+      <main id="main-content" tabIndex="-1">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/events" element={<Events />} />

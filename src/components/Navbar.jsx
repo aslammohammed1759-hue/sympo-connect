@@ -20,12 +20,19 @@ export default function Navbar() {
   return (
     <header className="nav">
       <Link to="/" className="brand"><span className="logo">✦</span>Sympo<b>Connect</b></Link>
-      <button className="burger" onClick={() => setOpen(!open)} aria-label="Menu">☰</button>
-      <nav className={open ? 'open' : ''}>
+      <button
+        type="button"
+        className="burger"
+        onClick={() => setOpen(!open)}
+        aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
+        aria-expanded={open}
+        aria-controls="primary-navigation"
+      >☰</button>
+      <nav id="primary-navigation" className={open ? 'open' : ''} aria-label="Main navigation">
         <NavLink to="/events">Discover</NavLink>
         <NavLink to="/submit">Post an event</NavLink>
         {user && <NavLink to="/dashboard">Dashboard</NavLink>}
-        {user && <Link to="/dashboard?tab=notifications">🔔{unread > 0 && <span className="count">{unread}</span>}</Link>}
+        {user && <Link to="/dashboard?tab=notifications" aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ''}`}>🔔{unread > 0 && <span className="count">{unread}</span>}</Link>}
         {['staff', 'admin'].includes(profile?.role) && <NavLink to="/staff">Staff</NavLink>}
         {profile?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
         {user ? <button className="btn ghost" onClick={logout}>Log out</button> : <Link className="btn primary" to="/auth">Log in</Link>}

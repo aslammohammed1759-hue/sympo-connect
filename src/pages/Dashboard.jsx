@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { useAuth } from '../AuthContext'
 import { STATUS_LABEL } from '../lib/constants'
 import EventCard from '../components/EventCard'
+import StatePanel from '../components/StatePanel'
 
 export default function Dashboard() {
   const { user, profile, refreshProfile } = useAuth()
@@ -14,13 +15,29 @@ export default function Dashboard() {
   const [notes, setNotes] = useState([])
   const [form, setForm] = useState(null)
   const [msg, setMsg] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
-  const load = () => {
-    supabase.from('saved_events').select('events(*, event_categories(name,icon))').order('created_at', { ascending: false }).then((r) => setSaved((r.data || []).map((x) => x.events).filter(Boolean)))
-    supabase.from('events').select('*, event_categories(name,icon)').eq('submitted_by', user.id).order('created_at', { ascending: false }).then((r) => setMine(r.data || []))
-    supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50).then((r) => setNotes(r.data || []))
+  const load = async () => {
+    setLoading(true)
+    setLoadError(false)
+    try {
+      const [savedResult, mineResult, notesResult] = await Promise.all([
+        supabase.from('saved_events').select('events(*, event_categories(name,icon))').order('created_at', { ascending: false }),
+        supabase.from('events').select('*, event_categories(name,icon)').eq('submitted_by', user.id).order('created_at', { ascending: false }),
+        supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50),
+      ])
+      if (savedResult.error || mineResult.error || notesResult.error) throw new Error('Dashboard data could not be loaded.')
+      setSaved((savedResult.data || []).map((x) => x.events).filter(Boolean))
+      setMine(mineResult.data || [])
+      setNotes(notesResult.data || [])
+    } catch {
+      setLoadError(true)
+    } finally {
+      setLoading(false)
+    }
   }
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
   useEffect(() => { if (profile) setForm({ full_name: profile.full_name, college_name: profile.college_name, district: profile.district, reminders: profile.notify_prefs?.reminders !== false }) }, [profile])
 
   const markAll = async () => { await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false); load() }
@@ -38,11 +55,18 @@ export default function Dashboard() {
   return (
     <div className="container">
       <h1>Hi{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} 👋</h1>
-      <div className="tabs">{tabs.map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setSp({ tab: k })}>{l}</button>)}</div>
+      <div className="tabs" role="group" aria-label="Dashboard sections">{tabs.map(([k, l]) => <button type="button" key={k} className={tab === k ? 'on' : ''} aria-pressed={tab === k} onClick={() => setSp({ tab: k })}>{l}</button>)}</div>
 
-      {tab === 'saved' && (saved.length === 0 ? <p className="empty">No saved events yet. Tap “Save event” on any event page.</p> : <div className="grid">{saved.map((e) => <EventCard key={e.id} e={e} />)}</div>)}
+      {loading
+        ? <StatePanel variant="loading" title="Loading your dashboard" />
+        : loadError
+          ? <StatePanel variant="error" title="Dashboard data couldn’t load" message="Your account is unchanged. Check your connection and try again." actionLabel="Retry" onAction={load} />
+          : <>
+      {tab === 'saved' && (saved.length === 0
+        ? <StatePanel title="No saved events yet" message="Save an event to keep it handy here." />
+        : <div className="grid">{saved.map((e) => <EventCard key={e.id} e={e} />)}</div>)}
 
-      {tab === 'submissions' && (mine.length === 0 ? <p className="empty">You haven't submitted anything. <Link to="/submit">Post an event</Link></p> :
+      {tab === 'submissions' && (mine.length === 0 ? <StatePanel title="No submissions yet" message="Your event submissions and their review status will appear here."><Link className="btn primary state-action" to="/submit">Post an event</Link></StatePanel> :
         <div className="list">{mine.map((e) => (
           <div key={e.id} className="card row-item">
             <div><b>{e.title}</b><br /><span className={`badge inline st-${e.status}`}>{STATUS_LABEL[e.status]}</span>
@@ -56,7 +80,7 @@ export default function Dashboard() {
 
       {tab === 'notifications' && (<>
         <button className="btn ghost" onClick={markAll}>Mark all as read</button>
-        {notes.length === 0 ? <p className="empty">No notifications yet.</p> :
+        {notes.length === 0 ? <StatePanel title="You’re all caught up" message="New updates about your events will appear here." /> :
           <div className="list">{notes.map((n) => (
             <Link key={n.id} to={n.event_id ? `/events/${n.event_id}` : '#'} className={`card note ${n.is_read ? '' : 'unread'}`}>
               <b>{n.title}</b><p>{n.body}</p><small className="muted">{new Date(n.created_at).toLocaleString()}</small>
@@ -75,6 +99,7 @@ export default function Dashboard() {
             {profile.role === 'student' && !profile.staff_requested && <button type="button" className="btn ghost" onClick={requestStaff}>Request staff access</button>}
             {profile.staff_requested && <span className="muted">Staff access requested</span>}</div>
         </form>)}
+          </>}
     </div>
   )
 }

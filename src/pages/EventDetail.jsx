@@ -4,6 +4,7 @@ import { supabase, posterUrl } from '../supabaseClient'
 import { useAuth } from '../AuthContext'
 import { fmtDate, fmtFee, REPORT_REASONS, STATUS_LABEL } from '../lib/constants'
 import SafeLink from '../components/SafeLink'
+import StatePanel from '../components/StatePanel'
 
 export default function EventDetail() {
   const { id } = useParams()
@@ -13,11 +14,25 @@ export default function EventDetail() {
   const [msg, setMsg] = useState('')
   const [report, setReport] = useState(false)
   const [rep, setRep] = useState({ reason: 'fake', details: '' })
+  const [loadError, setLoadError] = useState(false)
+  const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
-    supabase.from('events').select('*, event_categories(name,icon)').eq('id', id).maybeSingle().then((r) => setE(r.data || null))
-    if (user) supabase.from('saved_events').select('event_id').eq('event_id', id).maybeSingle().then((r) => setSaved(!!r.data))
-  }, [id, user])
+    let active = true
+    setE(undefined)
+    setLoadError(false)
+    supabase.from('events').select('*, event_categories(name,icon)').eq('id', id).maybeSingle().then((r) => {
+      if (!active) return
+      if (r.error) setLoadError(true)
+      else setE(r.data || null)
+    }).catch(() => { if (active) setLoadError(true) })
+    if (user) {
+      supabase.from('saved_events').select('event_id').eq('event_id', id).maybeSingle().then((r) => {
+        if (active) setSaved(!!r.data)
+      })
+    } else setSaved(false)
+    return () => { active = false }
+  }, [id, user, refresh])
 
   const needLogin = () => { setMsg('Please log in first.'); return !user }
   const toggleSave = async () => {
@@ -40,7 +55,8 @@ export default function EventDetail() {
     setMsg(error ? (error.code === '23505' ? 'You already reported this event.' : error.message) : 'Thanks, staff will review your report.')
   }
 
-  if (e === undefined) return <p className="center">Loading…</p>
+  if (loadError) return <div className="container"><StatePanel variant="error" title="Couldn’t load this event" message="Please check your connection and try again." actionLabel="Retry" onAction={() => setRefresh((value) => value + 1)} /></div>
+  if (e === undefined) return <div className="container"><StatePanel variant="loading" title="Loading event details" /></div>
   if (e === null) return <div className="center"><h2>Event not found</h2><p className="muted">It may not exist or is not approved yet.</p><Link to="/events">Back to events</Link></div>
   const poster = posterUrl(e.poster_path)
   const staffApproved = e.status === 'approved' && !e.is_demo
