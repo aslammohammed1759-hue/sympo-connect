@@ -10,6 +10,8 @@ import Dashboard from './pages/Dashboard'
 import Submit from './pages/Submit'
 import Staff from './pages/Staff'
 import Admin from './pages/Admin'
+import About from './pages/About'
+import Contact from './pages/Contact'
 import Static from './pages/Static'
 
 export default function App() {
@@ -22,6 +24,8 @@ export default function App() {
           <Route path="/events" element={<Events />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/p/about" element={<About />} />
+          <Route path="/p/contact" element={<Contact />} />
           <Route path="/p/:slug" element={<Static />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/submit" element={<ProtectedRoute><Submit /></ProtectedRoute>} />

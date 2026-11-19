@@ -3,7 +3,7 @@
 -- This does NOT auto-approve events. All new events remain pending staff review.
 
 create table if not exists public.trusted_college_domains (
-  domain text primary key check (domain = lower(domain) and domain !~ '[@/[:space:]]' and position('.' in domain) > 1),
+  domain text primary key check (domain = lower(domain) and char_length(domain) <= 253 and domain ~ '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$'),
   college_name text not null check (char_length(college_name) between 2 and 150),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -11,6 +11,8 @@ create table if not exists public.trusted_college_domains (
 );
 
 alter table public.events
+  add column if not exists event_time time,
+  add column if not exists social_url text check (social_url is null or social_url ~* '^https?://[^\s]+$'),
   add column if not exists submitter_email_verified boolean not null default false,
   add column if not exists submitter_email_domain text,
   add column if not exists trusted_college_domain boolean not null default false;

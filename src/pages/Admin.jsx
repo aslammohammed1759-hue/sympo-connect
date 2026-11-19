@@ -11,6 +11,7 @@ export default function Admin() {
   const [tab, setTab] = useState('overview')
   const [data, setData] = useState(null)
   const [msg, setMsg] = useState('')
+  const [domainForm, setDomainForm] = useState({ domain: '', college_name: '' })
 
   const load = async () => {
     setData(null)
@@ -24,17 +25,30 @@ export default function Admin() {
     else if (tab === 'reports') setData((await supabase.from('event_reports').select('*, events(title,status), reporter:profiles!event_reports_reporter_id_fkey(full_name)').order('created_at', { ascending: false }).limit(100)).data || [])
     else if (tab === 'duplicates') setData((await supabase.from('duplicate_events').select('*')).data || [])
     else if (tab === 'audit') setData((await supabase.from('audit_logs').select('*, actor:profiles!audit_logs_actor_id_fkey(full_name)').order('created_at', { ascending: false }).limit(100)).data || [])
+    else if (tab === 'domains') setData((await supabase.from('trusted_college_domains').select('*').order('domain')).data || [])
   }
   useEffect(() => { load() }, [tab])
 
   const run = async (p) => { setMsg(''); const { error } = await p; if (error) setMsg(error.message); else load() }
   const remove = (id) => { const note = prompt('Reason for removing this event?'); if (note) run(supabase.rpc('review_event', { p_event_id: id, p_action: 'remove', p_note: note })) }
-  const tabs = ['overview', 'users', 'events', 'reports', 'duplicates', 'audit']
+  const addDomain = async (event) => {
+    event.preventDefault()
+    setMsg('')
+    const domain = domainForm.domain.trim().toLowerCase()
+    const college_name = domainForm.college_name.trim()
+    const validDomain = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])$/
+    if (!validDomain.test(domain)) return setMsg('Enter a valid exact email domain, such as example.edu.')
+    if (!college_name) return setMsg('Enter the college name for this domain.')
+    const { error } = await supabase.from('trusted_college_domains').insert({ domain, college_name, created_by: user.id })
+    if (error) setMsg(error.message)
+    else { setDomainForm({ domain: '', college_name: '' }); load() }
+  }
+  const tabs = ['overview', 'users', 'events', 'domains', 'reports', 'duplicates', 'audit']
 
   return (
     <div className="container">
       <h1>Admin dashboard</h1>
-      <div className="tabs">{tabs.map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}</div>
+      <div className="tabs">{tabs.map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t === 'domains' ? 'Trusted domains' : t[0].toUpperCase() + t.slice(1)}</button>)}</div>
       {msg && <p className="alert">{msg}</p>}
       {data === null ? <p className="muted">Loading…</p> : <>
         {tab === 'overview' && <div className="stats">{Object.entries({ 'Total users': data.users, 'Total events': data.events, 'Pending': data.pending, 'Approved': data.approved, 'Rejected': data.rejected, 'Open reports': data.reports }).map(([k, v]) => <div key={k} className="card stat"><b>{v}</b><span>{k}</span></div>)}</div>}
@@ -46,6 +60,24 @@ export default function Admin() {
           <div key={e.id} className="card row-item"><div><Link to={`/events/${e.id}`}><b>{e.title}</b></Link> {e.is_demo && <span className="badge inline demo">DEMO</span>}<br /><span className={`badge inline st-${e.status}`}>{STATUS_LABEL[e.status]}</span><p className="muted">{e.college_name}</p></div>
             <div className="row">{e.status === 'approved' && <button className="btn ghost" onClick={() => run(supabase.rpc('admin_set_featured', { p_event: e.id, p_featured: !e.is_featured }))}>{e.is_featured ? '★ Unfeature' : '☆ Feature'}</button>}
               {e.status !== 'removed' && <button className="btn ghost danger" onClick={() => remove(e.id)}>Remove</button>}</div></div>))}</div>}
+        {tab === 'domains' && <>
+          <p className="muted">Allowlisting confirms account-domain provenance only. Every event still requires staff review.</p>
+          <form className="card form" onSubmit={addDomain}>
+            <div className="two">
+              <label>Exact college email domain<input required maxLength={253} value={domainForm.domain} onChange={(event) => setDomainForm({ ...domainForm, domain: event.target.value })} placeholder="example.edu" /></label>
+              <label>College name<input required maxLength={150} value={domainForm.college_name} onChange={(event) => setDomainForm({ ...domainForm, college_name: event.target.value })} /></label>
+            </div>
+            <button className="btn primary">Add trusted domain</button>
+          </form>
+          {data.length === 0 ? <p className="empty">No trusted domains configured.</p> : <div className="list">{data.map((domain) => (
+            <div key={domain.domain} className="card row-item">
+              <div><b>{domain.college_name}</b><p className="muted">{domain.domain}</p><span className={`badge inline ${domain.is_active ? 'trusted' : 'st-rejected'}`}>{domain.is_active ? 'Active' : 'Inactive'}</span></div>
+              <div className="row">
+                <button className="btn ghost" onClick={() => run(supabase.from('trusted_college_domains').update({ is_active: !domain.is_active }).eq('domain', domain.domain))}>{domain.is_active ? 'Deactivate' : 'Activate'}</button>
+                <button className="btn ghost danger" onClick={() => { if (confirm(`Remove ${domain.domain} from the trusted list?`)) run(supabase.from('trusted_college_domains').delete().eq('domain', domain.domain)) }}>Remove</button>
+              </div>
+            </div>))}</div>}
+        </>}
         {tab === 'reports' && (data.length === 0 ? <p className="empty">No reports.</p> : <div className="list">{data.map((r) => (
           <div key={r.id} className="card row-item"><div><Link to={`/events/${r.event_id}`}><b>{r.events?.title}</b></Link> <span className="badge inline st-pending">{r.status}</span><p>{REPORT_REASONS[r.reason]}{r.details ? `: ${r.details}` : ''}</p><p className="muted">By {r.reporter?.full_name || 'user'}</p></div>
             {r.status === 'open' && <div className="row"><button className="btn ghost" onClick={() => run(supabase.from('event_reports').update({ status: 'resolved', handled_by: user.id }).eq('id', r.id))}>Resolve</button><button className="btn ghost" onClick={() => run(supabase.from('event_reports').update({ status: 'dismissed', handled_by: user.id }).eq('id', r.id))}>Dismiss</button></div>}</div>))}</div>)}

@@ -31,6 +31,7 @@ function ReviewCard({ e, onDone }) {
         <p>📅 {fmtDate(e.event_date)} · deadline {fmtDate(e.registration_deadline)} · {fmtFee(e.fee)} · {e.mode}</p>
         <p>✉️ {e.contact}</p>
         <p className="muted">Submitted by {e.submitter?.full_name || 'unknown'} ({e.submitter?.college_name || '-'})</p>
+        <p className="muted">{e.trusted_college_domain ? `Verified college account (${e.submitter_email_domain})` : e.submitter_email_verified ? 'Verified email; domain is not allowlisted' : 'Email not verified (legacy or manual submission)'}. This signal does not verify the event itself.</p>
         <p className="pre clip">{e.description}</p>
         <div className="row"><SafeLink href={e.registration_url} className="btn ghost">Check registration link ↗</SafeLink></div>
         <div className="checks">{CHECKS.map(([k, l]) => <label key={k} className="check"><input type="checkbox" checked={!!checks[k]} onChange={(x) => setChecks({ ...checks, [k]: x.target.checked })} /> {l}</label>)}</div>

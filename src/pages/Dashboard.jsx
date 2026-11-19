@@ -46,6 +46,7 @@ export default function Dashboard() {
         <div className="list">{mine.map((e) => (
           <div key={e.id} className="card row-item">
             <div><b>{e.title}</b><br /><span className={`badge inline st-${e.status}`}>{STATUS_LABEL[e.status]}</span>
+              {e.trusted_college_domain && <span className="badge inline trusted" title="Email domain is allowlisted; this does not mean the event was staff-approved">Verified college account</span>}
               {e.review_note && <p className="muted">Staff note: {e.review_note}</p>}</div>
             <div className="row">
               <Link className="btn ghost" to={`/events/${e.id}`}>View</Link>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../AuthContext'
-import { STATES, today } from '../lib/constants'
+import { DISTRICTS_BY_STATE, STATES, today } from '../lib/constants'
 import { normalizeUrl } from '../lib/url'
 
 const MAX = 2 * 1024 * 1024
@@ -23,7 +23,7 @@ export default function Submit() {
   const { user, profile } = useAuth()
   const nav = useNavigate()
   const editId = useSearchParams()[0].get('edit')
-  const [f, setF] = useState({ ...BLANK, college_name: profile?.college_name || '', district: profile?.district || '' })
+  const [f, setF] = useState({ ...BLANK, college_name: profile?.college_name || '' })
   const [cats, setCats] = useState([])
   const [file, setFile] = useState(null)
   const [existing, setExisting] = useState(null)
@@ -31,6 +31,7 @@ export default function Submit() {
   const [busy, setBusy] = useState(false)
   const emailVerified = Boolean(user?.email_confirmed_at || user?.confirmed_at)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  const setState = (e) => setF({ ...f, state: e.target.value, district: '' })
 
   useEffect(() => {
     supabase.from('event_categories').select('id,name').order('name').then((r) => setCats((r.data || []).filter((c) => EVENT_TYPES.includes(c.name))))
@@ -99,15 +100,15 @@ export default function Submit() {
   return (
     <div className="container narrow">
       <h1>{existing ? 'Edit & resubmit event' : 'Host an Event'}</h1>
-      <p className="muted">A verified email confirms access to that inbox, not that an event is genuine. Only domains explicitly approved in the trusted-college allowlist can publish automatically; other submissions remain pending staff review.</p>
+      <p className="muted">A verified email confirms access to that inbox, not that an event is genuine. Verified college accounts receive a separate account label; every event remains pending until staff review.</p>
       {!emailVerified && <div className="alert">Please verify {user?.email || 'your email address'} before submitting an event. Check your inbox for the confirmation link.</div>}
-      {emailVerified && <p className="notice">✓ Your email address is verified. Email verification alone does not verify an event.</p>}
+      {emailVerified && <p className="notice">✓ Verified organizer email: <b>{user.email}</b>. This confirms access to the inbox only; event submissions still require staff review.</p>}
       {errs.length > 0 && <div className="alert"><ul>{errs.map((x) => <li key={x}>{x}</li>)}</ul></div>}
       <form className="card form" onSubmit={submit}>
         <label>Event title<input required value={f.title} maxLength={150} onChange={set('title')} /></label>
         <label>Organizing college<input required value={f.college_name} maxLength={150} onChange={set('college_name')} /></label>
-        <div className="two"><label>District<input required value={f.district} maxLength={80} onChange={set('district')} /></label>
-          <label>State<select value={f.state} onChange={set('state')}>{STATES.map((s) => <option key={s}>{s}</option>)}</select></label></div>
+        <div className="two"><label>State<select required value={f.state} onChange={setState}>{STATES.map((s) => <option key={s}>{s}</option>)}</select></label>
+          <label>District<select required value={f.district} onChange={set('district')}><option value="">Select a district</option>{(DISTRICTS_BY_STATE[f.state] || []).map((district) => <option key={district}>{district}</option>)}</select></label></div>
         <label>Description<textarea required rows={5} maxLength={5000} value={f.description} onChange={set('description')} /></label>
         <div className="two"><label>Event type<select required value={f.category_id} onChange={set('category_id')}><option value="">Select…</option>{cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
           <label>Mode<select value={f.mode} onChange={set('mode')}><option value="offline">Offline</option><option value="online">Online</option><option value="hybrid">Hybrid</option></select></label></div>

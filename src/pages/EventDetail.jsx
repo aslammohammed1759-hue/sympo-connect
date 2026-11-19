@@ -43,7 +43,7 @@ export default function EventDetail() {
   if (e === undefined) return <p className="center">Loading…</p>
   if (e === null) return <div className="center"><h2>Event not found</h2><p className="muted">It may not exist or is not approved yet.</p><Link to="/events">Back to events</Link></div>
   const poster = posterUrl(e.poster_path)
-  const verified = e.status === 'approved' && !e.is_demo
+  const staffApproved = e.status === 'approved' && !e.is_demo
 
   return (
     <div className="container detail">
@@ -53,7 +53,11 @@ export default function EventDetail() {
         <div>{poster ? <img className="big-poster" src={poster} alt={`${e.title} poster`} /> : <div className="poster big"><span className="poster-icon">{e.event_categories?.icon || '🎓'}</span></div>}</div>
         <div>
           <span className="chip">{e.event_categories?.name}</span>
-          {verified ? <span className="badge ok inline">✓ Staff verified</span> : e.is_demo ? <span className="badge demo inline">DEMO DATA</span> : null}{e.trusted_college_domain && !e.is_demo && <span className="badge inline">Verified college email</span>}
+          {staffApproved ? <span className="badge ok inline">✓ Staff approved</span> : e.is_demo ? <span className="badge demo inline">DEMO DATA</span> : null}
+          {e.trusted_college_domain && !e.is_demo && <>
+            <span className="badge inline trusted" title="This verifies the submitter's email domain, not the event">Verified college account</span>
+            <p className="muted">The submitter used a verified email on an allowlisted college domain. This confirms account email only; it does not mean the event itself is genuine or staff-approved.</p>
+          </>}
           <h1>{e.title}</h1>
           <p className="lead">{e.college_name}</p>
           <ul className="facts">

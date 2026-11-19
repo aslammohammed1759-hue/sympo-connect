@@ -1,4 +1,7 @@
-export const STATES = ['Tamil Nadu','Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Puducherry','Jammu and Kashmir','Ladakh','Chandigarh']
+import districtData from '../data/india-districts.json'
+
+export const STATES = ['Tamil Nadu','Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry']
+export const DISTRICTS_BY_STATE = Object.fromEntries([...districtData.states, ...districtData.union_territories].map(({ name, districts }) => [name, districts]))
 export const REPORT_REASONS = { fake: 'Fake or fraudulent event', wrong_info: 'Wrong information', suspicious_link: 'Suspicious registration link', duplicate: 'Duplicate event', other: 'Other' }
 export const STATUS_LABEL = { pending: 'Pending review', approved: 'Approved', rejected: 'Rejected', needs_correction: 'Needs corrections', removed: 'Removed' }
 export const FILTER_KEYS = ['q', 'state', 'district', 'category', 'date', 'mode', 'fee']

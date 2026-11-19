@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import { isConfigured, supabase } from '../supabaseClient'
+
+function authErrorMessage(error) {
+  const message = error?.message || ''
+  const details = `${error?.name || ''} ${message}`
+  if (/failed to fetch|network request failed|fetcherror|authretryablefetcherror|load failed/i.test(details)) {
+    return 'Network error or Supabase unreachable. Check your internet connection, project URL and anon key in .env.local. Also confirm your site URL and redirect URLs in Supabase Authentication settings. For self-hosted Supabase, verify its CORS allowed origins.'
+  }
+  return message || 'Authentication failed. Please try again.'
+}
 
 export default function Auth() {
   const [mode, setMode] = useState('login')
@@ -16,20 +25,27 @@ export default function Auth() {
     e.preventDefault(); setErr(''); setMsg('')
     if (f.password.length < 8) return setErr('Password must be at least 8 characters.')
     if (mode === 'signup' && (!f.full_name.trim() || !f.college_name.trim() || !f.district.trim())) return setErr('Please fill in your name, college and district.')
+    if (!isConfigured || !supabase) return setErr('Network error or missing Supabase keys. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local, then restart the dev server.')
     setBusy(true)
-    if (mode === 'login') {
-      const { error } = await supabase.auth.signInWithPassword({ email: f.email.trim(), password: f.password })
+    try {
+      if (mode === 'login') {
+        const { error } = await supabase.auth.signInWithPassword({ email: f.email.trim(), password: f.password })
+        if (error) return setErr(authErrorMessage(error))
+        nav(from, { replace: true })
+        return
+      }
+      const { data, error } = await supabase.auth.signUp({
+        email: f.email.trim(), password: f.password,
+        options: { emailRedirectTo: window.location.origin, data: { full_name: f.full_name.trim(), college_name: f.college_name.trim(), district: f.district.trim() } },
+      })
+      if (error) return setErr(authErrorMessage(error))
+      if (data.session) nav(from, { replace: true })
+      else setMsg('Account created. Check your email and click the verification link, then log in.')
+    } catch (error) {
+      setErr(authErrorMessage(error))
+    } finally {
       setBusy(false)
-      return error ? setErr(error.message) : nav(from, { replace: true })
     }
-    const { data, error } = await supabase.auth.signUp({
-      email: f.email.trim(), password: f.password,
-      options: { emailRedirectTo: window.location.origin, data: { full_name: f.full_name.trim(), college_name: f.college_name.trim(), district: f.district.trim() } },
-    })
-    setBusy(false)
-    if (error) return setErr(error.message)
-    if (data.session) nav(from, { replace: true })
-    else setMsg('Account created. Check your email and click the verification link, then log in.')
   }
 
   return (
