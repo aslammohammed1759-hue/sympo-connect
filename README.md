@@ -73,10 +73,10 @@ This feature is implemented on `feature/verified-event-submission`. It adds a da
 
 1. First run the original `supabase/schema.sql` on a fresh Supabase project as described above.
 2. Then open **SQL Editor → New query**, paste the complete migration file, and run it once.
-3. In **Table Editor → trusted_college_domains**, add only exact college email domains that your team has independently checked. Example format: domain = `examplecollege.ac.in`, college_name = `Example College`, is_active = `true`. These are examples only; do not add a domain unless you have verified it belongs to that institution.
+3. In **Admin → Trusted domains**, add only exact college email domains that your team has independently checked. Example format: domain = `examplecollege.ac.in`, college name = `Example College`. These are examples only; do not add a domain unless you have verified it belongs to that institution. Domains can be deactivated or removed there.
 4. Keep **Authentication → Providers → Email → Confirm email** enabled.
 5. A submitter must have a confirmed email address. The database checks this on event insertion; the browser cannot mark an email as verified.
-6. Events submitted from an active allowlisted domain receive a **Verified college email** indicator. Events from other verified email domains can still be submitted, but do not receive that indicator.
+6. Events submitted from an active allowlisted domain receive a **Verified college account** indicator. Events from other verified email domains can still be submitted, but do not receive that indicator.
 7. **Every event remains pending until staff reviews and approves it.** A trusted email domain is not proof that an event is genuine and does not automatically publish or staff-verify the event.
 
 To deactivate a domain, set `is_active = false` in the table. To remove it entirely, delete its row. Manage this table only as an administrator.

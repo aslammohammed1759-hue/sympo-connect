@@ -11,21 +11,40 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   const loadProfile = useCallback(async (uid) => {
-    if (!uid) return setProfile(null)
-    const { data } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle()
-    setProfile(data)
+    if (!uid) { setProfile(null); return }
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle()
+      if (error) throw error
+      setProfile(data)
+    } catch {
+      setProfile(null)
+    }
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      loadProfile(data.session?.user.id).finally(() => setLoading(false))
-    })
+    let active = true
+    const initialize = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession()
+        if (error) throw error
+        if (!active) return
+        setSession(data.session)
+        await loadProfile(data.session?.user.id)
+      } catch {
+        if (active) {
+          setSession(null)
+          setProfile(null)
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+    initialize()
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s)
       setTimeout(() => loadProfile(s?.user.id), 0)
     })
-    return () => sub.subscription.unsubscribe()
+    return () => { active = false; sub.subscription.unsubscribe() }
   }, [loadProfile])
 
   const value = {
