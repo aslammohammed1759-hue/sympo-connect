@@ -1,4 +1,4 @@
-# SympoConnect
+﻿# SympoConnect
 
 College symposium, hackathon, workshop and event finder. React (Vite) + Supabase (Postgres, Auth, Storage, RLS).
 Roles: **student** (browse, save, submit, report) → **staff** (review submissions) → **admin** (manage users/roles, moderation, audit log).
@@ -6,13 +6,10 @@ Roles: **student** (browse, save, submit, report) → **staff** (review submissi
 > Honest status: the code was written but **not run** in the environment that generated it (no network for `npm install`, no Supabase project). Follow the testing checklist below and fix any small typo or config issue you find.
 
 ## Project layout
-```
-supabase/schema.sql      tables, constraints, indexes, triggers, RPCs, RLS, storage bucket (run once)
-supabase/seed_demo.sql   optional: 3 fictional DEMO events
-src/lib/                 constants, URL validation (url.js), event query (events.js)
-src/components/          Navbar, Footer, EventCard, Filters, SafeLink, ProtectedRoute
-src/pages/               Home, Events, EventDetail, Auth, Dashboard, Submit, Staff, Admin, Static
-```
+
+- `frontend/` — React (Vite) app, `netlify.toml`, `vercel.json`, `src/`
+- `backend/` — Python backend server (`app.py`)
+- `supabase/` — `schema.sql`, `seed_demo.sql`, migrations
 
 ## 1. Create the Supabase project
 1. Sign up at supabase.com → **New project** → choose a name, a strong database password, a region near you.
@@ -104,3 +101,4 @@ To deactivate a domain, set `is_active = false` in the table. To remove it entir
 - Posters: JPG/PNG/WebP, max 2 MB, checked in the browser and enforced by the storage bucket. The bucket is public-read, so a poster URL of a still-pending event works if someone knows the exact random path.
 - URLs are normalized in the browser and constrained to http(s) in the database. The warning dialog is a heuristic (shorteners, raw IPs, punycode, http); it can't prove a site is safe.
 - The Privacy Policy and Terms pages are placeholders. Replace them before launch.
+
